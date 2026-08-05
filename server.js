@@ -2,18 +2,23 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
-const serviceAccount = require('/etc/secrets/serviceAccountKey.json');
+const fs = require('fs');
+
+// Leemos el archivo secreto de Render de forma segura
+const serviceAccount = JSON.parse(
+  fs.readFileSync('/etc/secrets/serviceAccountKey.json', 'utf8')
+);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
+
 const db = admin.firestore();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Ruta corregida apuntando a la colección 'Codigos' con C mayúscula
 app.post('/api/verificar-codigo', async (req, res) => {
     try {
         const { codigo, dispositivoId } = req.body;
@@ -22,7 +27,6 @@ app.post('/api/verificar-codigo', async (req, res) => {
             return res.status(400).json({ error: 'Faltan datos en la petición' });
         }
 
-        // Apuntando exactamente a la colección 'Codigos' que creamos
         const codigoRef = db.collection('Codigos').doc(codigo);
         const doc = await codigoRef.get();
 
@@ -32,7 +36,6 @@ app.post('/api/verificar-codigo', async (req, res) => {
 
         const data = doc.data();
 
-        // Verificar si ya está asignado a otro teléfono
         if (data.dispositivo && data.dispositivo !== dispositivoId) {
             return res.status(403).json({ 
                 valido: false, 
@@ -40,7 +43,6 @@ app.post('/api/verificar-codigo', async (req, res) => {
             });
         }
 
-        // Si no tiene dispositivo asignado, lo amarramos al dispositivo actual
         if (!data.dispositivo || data.dispositivo === "") {
             await codigoRef.update({ dispositivo: dispositivoId, Usado: true });
         }
