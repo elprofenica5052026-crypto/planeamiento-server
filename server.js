@@ -2,19 +2,25 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
-const fs = require('fs');
 
-// Leemos el archivo secreto de Render de forma segura
-const serviceAccount = JSON.parse(
-  fs.readFileSync('/etc/secrets/serviceAccountKey.json', 'utf8')
-);
+try {
+  let serviceAccount;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    throw new Error('La variable FIREBASE_SERVICE_ACCOUNT no está definida en el entorno.');
+  }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('Firebase inicializado correctamente.');
+} catch (error) {
+  console.error('Error crítico al inicializar Firebase:', error.message);
+  process.exit(1);
+}
 
 const db = admin.firestore();
-
 const app = express();
 app.use(cors());
 app.use(express.json());
